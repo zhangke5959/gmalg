@@ -17,6 +17,7 @@ export CC STRIP MAKE AR
 all: $(OBJS)
 	$(CC) $(CFLAGS) -o ${DIR_OBJ}/$(SHAREDLIB) $(OBJS)
 	$(AR) -cr ${DIR_OBJ}/$(STATICLIB) $(OBJS)
+	make -C utils
 
 ${DIR_OBJ}/%.o:%.c
 	test -d $(DIR_OBJ) || mkdir -p $(DIR_OBJ)
@@ -24,6 +25,7 @@ ${DIR_OBJ}/%.o:%.c
 
 clean:
 	$(RM) *.so.* ${DIR_OBJ}/* ${DIR_OBJ}/$(OBJS) ${DIR_OBJ}/$(SHAREDLIB) ${DIR_OBJ}/$(STATICLIB)
+	make -C utils clean
 
 mrproper: clean
 	$(RM) tags *.tgz
