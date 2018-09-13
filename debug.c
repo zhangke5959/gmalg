@@ -8,7 +8,6 @@ void printHex(unsigned char *name, unsigned char *c, int n)
 	int i;
 
 	#define  _print	printf
-
 	_print ("\n---------------------[%s ,len = %d, start ]----------------------\n",name,n);
 	for (i = 0; i < n; i++) {
 		_print("0x%02X, ", c[i]);

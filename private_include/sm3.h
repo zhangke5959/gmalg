@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "typedef.h"
 
+#define SM3_DATA_LEN	32
+
 typedef struct {
 	uint32_t total[2];    /*!< number of bytes processed  */
 	uint32_t state[8];    /*!< intermediate digest state  */

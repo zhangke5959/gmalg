@@ -45,7 +45,6 @@ int main(int argc, char **argv)
 	sm2_make_keypair(otherPriKey, otherPubKey);
 	sm2_make_keypair(otherTempPriKey, otherTempPubKey);
 
-
 	sm2_shared_point(selfPriKey, selfTempPriKey, selfTempPubKey, otherPubKey, otherTempPubKey, selfPoint);
 	printHex("selfkey x", (u8*)selfPoint, ECC_NUMWORD*2);
 
@@ -63,7 +62,6 @@ int main(int argc, char **argv)
 
 	sm2_point_mult(selfPubKey, otherPriKey, otherPoint); /* U=[x2_]RB */
 	printHex("otherkey x", (u8*)otherPoint, ECC_NUMWORD*2);
-
 
 	return 0;
 }
