@@ -22,8 +22,8 @@
 #define D2I_PRI(pri) ((unsigned char *)pri->K)
 
 typedef struct gmalg_ctx_st {
-	sm3_ctx sm3_ctx[1];
-	sm4_ctx sm4_ctx[1];
+	struct sm3_ctx sm3_ctx[1];
+	struct sm4_ctx sm4_ctx[1];
 } gmalg_ctx;
 
 int GMALG_LibTest(void)
@@ -95,7 +95,7 @@ int GMALG_GeneratePublicKey_ECC (
 
 	rc = sm2_make_pubkey(D2I_PRI(pucPrivateKey), pubKey);
 
-	pucPublicKey->bits = htonl(0x100);
+	pucPublicKey->bits = cpu_to_be32(0x100);
 	memcpy(pucPublicKey->x, pubKey->x, ECC_NUMWORD);
 	memcpy(pucPublicKey->y, pubKey->y, ECC_NUMWORD);
 
@@ -115,9 +115,9 @@ int GMALG_GenerateKeyPair_ECC(
 	rc = sm2_make_prikey(priKey);
 	rc = sm2_make_pubkey(priKey, pubKey);
 
-	pucPrivateKey->bits = htonl(0x100);
+	pucPrivateKey->bits = cpu_to_be32(0x100);
 	memcpy( pucPrivateKey->K, priKey, ECC_NUMWORD);
-	pucPublicKey->bits = htonl(0x100);
+	pucPublicKey->bits = cpu_to_be32(0x100);
 	memcpy(pucPublicKey->x, pubKey->x, ECC_NUMWORD);
 	memcpy(pucPublicKey->y, pubKey->y, ECC_NUMWORD);
 
@@ -321,9 +321,9 @@ int GMALG_HashFinal (
 	gmalg_ctx *ctx = (gmalg_ctx *)hDeviceHandle;
 	int rc = 0;
 
-	rc = sm3_finish(ctx->sm3_ctx, pucHash);
+	rc = sm3_final(ctx->sm3_ctx, pucHash);
 	if(puiHashLength)
-		*puiHashLength =  32;
+		*puiHashLength = SM3_DATA_LEN;
 
 	return rc;
 }
@@ -360,7 +360,7 @@ int GMALG_GenerateAgreementDataWithECC (
 	memcpy(agree->pubKey->y, pucSponsorPublicKey->y, ECC_NUMWORD);
 	memcpy(agree->priKey, pucSponsePrivateKey->K, ECC_NUMWORD);
 
-	pucSponsorTmpPublicKey->bits = htonl(0x100);
+	pucSponsorTmpPublicKey->bits = cpu_to_be32(0x100);
 	memcpy(pucSponsorTmpPublicKey->x, agree->tempPubKey->x, ECC_NUMWORD);
 	memcpy(pucSponsorTmpPublicKey->y, agree->tempPubKey->y, ECC_NUMWORD);
 
@@ -430,7 +430,7 @@ int GMALG_GenerateAgreementDataAndKeyWithECC(
 
 	sm2_shared_key(tempPubKey, ZA, ZB, uiKey, phKey);
 
-	pucResponseTmpPublicKey->bits = htonl(0x100);
+	pucResponseTmpPublicKey->bits = cpu_to_be32(0x100);
 	memcpy(pucResponseTmpPublicKey->x, tempPubKey->x, ECC_NUMWORD);
 	memcpy(pucResponseTmpPublicKey->y, tempPubKey->y, ECC_NUMWORD);
 

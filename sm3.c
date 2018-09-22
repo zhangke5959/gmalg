@@ -34,7 +34,7 @@
 /*
  * SM3 context setup
  */
-int sm3_init(sm3_ctx *ctx)
+int sm3_init(struct sm3_ctx *ctx)
 {
 	ctx->total[0] = 0;
 	ctx->total[1] = 0;
@@ -54,7 +54,7 @@ int sm3_init(sm3_ctx *ctx)
 	return 0;
 }
 
-static void sm3_process(sm3_ctx *ctx, u8 data[64])
+static void sm3_process(struct sm3_ctx *ctx, u8 data[64])
 {
 	u32 SS1, SS2, TT1, TT2, W[68],W1[64];
 	u32 A, B, C, D, E, F, G, H;
@@ -224,7 +224,7 @@ static void sm3_process(sm3_ctx *ctx, u8 data[64])
 /*
  * SM3 process buffer
  */
-int sm3_update(sm3_ctx *ctx, const u8 *input, u32 ilen)
+int sm3_update(struct sm3_ctx *ctx, const u8 *input, u32 ilen)
 {
 	u32 left;
 	int fill;
@@ -280,7 +280,7 @@ static u8 sm3_padding[64] =
 /*
  * SM3 final digest
  */
-int sm3_finish(sm3_ctx *ctx, u8 *output)
+int sm3_final(struct sm3_ctx *ctx, u8 *output)
 {
 	u32 last, padn;
 	u32 high, low;
@@ -314,7 +314,7 @@ int sm3_finish(sm3_ctx *ctx, u8 *output)
 	return 0;
 }
 
-int sm3_finup(sm3_ctx *ctx, const u8 *data,
+int sm3_finup(struct sm3_ctx *ctx, const u8 *data,
 		u32 len, u8 *out)
 {
 #if DEBUG
@@ -323,5 +323,5 @@ int sm3_finup(sm3_ctx *ctx, const u8 *data,
 
 	sm3_init(ctx);
 	sm3_update(ctx, data, len);
-	return sm3_finish(ctx, out);
+	return sm3_final(ctx, out);
 }

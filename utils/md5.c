@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #include "debug.h"
-#include "sm3.h"
+#include "md5.h"
 
 u8 in[64];
 u8 hash[32];
@@ -13,19 +13,18 @@ u8 len = 64;
 
 int main(int argc, char **agv)
 {
-	struct sm3_ctx ctx[1];
+	struct md5_ctx ctx[1];
 	int i;
 
 	for (i = 0; i < len; i++) {
 		in[i] = i;
 	}
 		
-	sm3_init(ctx);
-	sm3_update(ctx, in, len);
-	sm3_update(ctx, in, len);
-	sm3_final(ctx, hash);
+	md5_init(ctx);
+	md5_update(ctx, in, len);
+	md5_final(ctx, hash);
 
-	printHex("hash", hash, 32);
+	printHex("hash", hash, MD5_DIGEST_SIZE);
 
 	return 0;
 }
