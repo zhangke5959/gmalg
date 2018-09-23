@@ -19,7 +19,6 @@ int vli_get_random(u8 *data, u32 len)
 		close(fd);
 
 	}
-	memset(data, 0x33, len);
-
+//	memset(data, 0x33, len);
 	return ret;
 }

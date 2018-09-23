@@ -105,7 +105,7 @@ u64 vli_lshift(u64 *result, u64 *in, u32 shift, u8 ndigits)
 	for (i = 0; i < ndigits; ++i) {
 		u64 temp = in[i];
 		result[i] = (temp << shift) | carry;
-		carry = temp >> (64 - shift);
+		carry = shift ? temp >> (64 - shift) : 0;
 	}
 
 	return carry;
@@ -122,7 +122,7 @@ u64 vli_rshift(u64 *result, u64 *in, u32 shift, u8 ndigits)
 	for (i = ndigits -1; i >= 0; --i) {
 		u64 temp = in[i];
 		result[i] = (temp >> shift) | carry;
-		carry = temp << (64 - shift);
+		carry = shift ? temp << (64 - shift) : 0;
 	}
 
 	return carry;
@@ -134,7 +134,7 @@ u64 vli_add(u64 *result, u64 *left, u64 *right, u8 ndigits)
 	u64 carry = 0;
 	u32 i;
 
-	for(i=0; i<ndigits; ++i){
+	for (i = 0; i < ndigits; ++i) {
 		u64 sum;
 
 		sum = left[i] + right[i] + carry;
@@ -201,15 +201,149 @@ static uint128_t add_128_128(uint128_t a, uint128_t b)
 	return result;
 }
 
-void vli_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
+static u64 vli_add_digit_mul(u64 *result, u64 *b, u64 c, u64 *d, u8 digits)
+{
+	uint128_t mul;
+	u64 carry, rh, rl;
+	u32 i;
+
+	if (c == 0)
+		return 0;
+
+	carry = 0;
+	for (i = 0; i < digits; i++) {
+		mul = mul_64_64(c, d[i]);
+		if ((result[i] = b[i] + carry) < carry) {
+			carry = 1;
+		} else {
+			carry = 0;
+		}
+		if ((result[i] += mul.m_low) < mul.m_low) {
+			carry++;
+		}
+		carry += mul.m_high;
+	}
+
+	return carry;
+}
+
+void bn_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
+{
+	u64 t[2*ndigits];
+	u32 bdigits, cdigits, i;
+
+	vli_clear(t, 2*ndigits);
+
+	bdigits = vli_num_digits(left, ndigits);
+	cdigits = vli_num_digits(right, ndigits);
+
+	for(i=0; i<bdigits; i++) {
+		t[i+cdigits] += vli_add_digit_mul(&t[i], &t[i], left[i], right, cdigits);
+	}
+
+	vli_set(result, t, 2*ndigits);
+}
+
+#define BN_DIGIT_BITS    32
+#define BN_MAX_DIGIT     0xFFFFFFFF
+static u32 vli_sub_digit_mult(u32 *a, u32 *b, u32 c, u32 *d, u32 digits)
+{
+	u64 result;
+	u32 borrow, rh, rl;
+	u32 i;
+
+	if(c == 0)
+		return 0;
+
+	borrow = 0;
+	for(i=0; i<digits; i++) {
+		result = (u64)c * d[i];
+		rl = result & BN_MAX_DIGIT;
+		rh = (result >> BN_DIGIT_BITS) & BN_MAX_DIGIT;
+		if((a[i] = b[i] - borrow) > (BN_MAX_DIGIT - borrow)) {
+			borrow = 1;
+		} else {
+			borrow = 0;
+		}
+		if((a[i] -= rl) > (BN_MAX_DIGIT - rl)) {
+			borrow++;
+		}
+		borrow += rh;
+	}
+
+	return borrow;
+}
+
+static u32 bn_digit_bits(u32 a)
+{
+	u32 i;
+
+	for(i = 0; i< sizeof(a) * 8; i++) {
+		if(a == 0)  break;
+		a >>= 1;
+	}
+
+	return i;
+}
+
+void bn_div(u32 *a, u32 *b, u32 *c, u32 cdigits, u32 *d, u32 ddigits)
+{
+	u32 ai, t, cc[cdigits+1], dd[cdigits/2];
+	u32 dddigits, shift;
+	u64 tmp;
+	int i;
+
+	dddigits = ddigits;
+
+	shift = BN_DIGIT_BITS - bn_digit_bits(d[dddigits-1]);
+	vli_clear((u64*)cc, dddigits/2);
+	cc[cdigits] = vli_lshift((u64*)cc, (u64*)c, shift, cdigits/2);
+	vli_lshift((u64*)dd, (u64*)d, shift, dddigits/2);
+	t = dd[dddigits-1];
+
+	vli_clear((u64*)a, cdigits/2);
+	i = cdigits - dddigits;
+	for(; i>=0; i--) {
+		if(t == BN_MAX_DIGIT) {
+			ai = cc[i+dddigits];
+		} else {
+			tmp = cc[i+dddigits-1];
+			tmp += (u64)cc[i+dddigits] << BN_DIGIT_BITS;
+			ai = tmp / (t + 1);
+		}
+
+		cc[i+dddigits] -= vli_sub_digit_mult(&cc[i], &cc[i], ai, dd, dddigits);
+		while(cc[i+dddigits] || (vli_cmp((u64*)&cc[i], (u64*)dd, dddigits/2) >= 0)) {
+			ai++;
+			cc[i+dddigits] -= vli_sub((u64*)&cc[i], (u64*)&cc[i], (u64*)dd, dddigits/2);
+		}
+		a[i] = ai;
+	}
+
+	vli_rshift((u64*)b, (u64*)cc, shift, dddigits/2);
+}
+
+void vli_div(u64 *result, u64 *remainder, u64 *left, u64 cdigits, u64 *right, u8 ddigits)
+{
+	bn_div((u32*)result, (u32*)remainder, (u32*)left, cdigits*2, (u32*)right, ddigits*2);
+}
+
+void bn_mod(u64 *result, u64 *left, u64 *right, u8 ndigits)
+{
+	u64 t[2*ndigits];
+
+	vli_div(t, result, left, ndigits*2, right, ndigits);
+}
+
+void _vli_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
 {
 	uint128_t r01 = { 0, 0 };
 	u64 r2 = 0;
 	unsigned int i, k;
 
 	/* Compute each digit of result in sequence, maintaining the
-	 * 	 * carries.
-	 * 	 	 */
+	 * carries.
+	 */
 	for (k = 0; k < ndigits * 2 - 1; k++) {
 		unsigned int min;
 
@@ -234,6 +368,15 @@ void vli_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
 	}
 
 	result[ndigits * 2 - 1] = r01.m_low;
+}
+
+void vli_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
+{
+#if 1
+	bn_mult(result, left, right, ndigits);
+#else
+	_vli_mult(result, left, right, ndigits);
+#endif
 }
 
 void vli_square(u64 *result, u64 *left, u8 ndigits)
@@ -293,7 +436,8 @@ void vli_mod_add(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 }
 
 /* Computes result = (left - right) % mod.
-   Assumes that left < mod and right < mod, result != mod. */
+ * Assumes that left < mod and right < mod, result != mod.
+ */
 void vli_mod_sub(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 {
 	u64 borrow;
@@ -467,8 +611,9 @@ void vli_mmod_fast_sm2_256(u64 *result, u64 *_product, u64 *mod, u8 ndigits)
 		}
 	}
 }
+
 /* Computes result = (product) % mod. */
-void vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
+void _vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 {
 	u64 modMultiple[2 * ndigits];
 	uint digitShift, bitShift;
@@ -524,17 +669,30 @@ void vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 	vli_set(result, product, ndigits);
 }
 
+/* Computes result = (product) % mod. */
+void vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
+{
+#if 1
+	bn_mod(result, product, mod, ndigits);
+#else
+	_vli_mod(result, product, mod, ndigits);
+#endif
+}
+
 /* Computes result = (left * right) % curve->p. */
 void vli_mod_mult_fast(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 {
 	u64 product[2 * ndigits];
 
 	vli_mult(product, left, right, ndigits);
+#if 1
+	vli_mod(result, product, mod, ndigits);
+#else
 	if ( mod[1] == 0xFFFFFFFF00000000ull)
 		vli_mmod_fast_sm2_256(result, product, mod, ndigits);
-	//	vli_mod(result, product, mod, ndigits);
 	else
 		vli_mmod_fast_nist_256(result, product, mod, ndigits);
+#endif
 }
 
 /* Computes result = left^2 % curve->p. */
@@ -543,11 +701,15 @@ void vli_mod_square_fast(u64 *result, u64 *left, u64 *mod, u8 ndigits)
 	u64 product[2 * ndigits];
 
 	vli_square(product, left, ndigits);
+#if 1
+	vli_mod(result, product, mod, ndigits);
+
+#else
 	if ( mod[1] == 0xFFFFFFFF00000000ull)
 		vli_mmod_fast_sm2_256(result, product, mod, ndigits);
-	//	vli_mod(result, product, mod, ndigits);
 	else
 		vli_mmod_fast_nist_256(result, product, mod, ndigits);
+#endif
 }
 
 /* Computes result = (left * right) % mod. */

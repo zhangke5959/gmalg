@@ -30,10 +30,10 @@ int main(int argc, char **argv)
 	int ret = -1;
 	int Clen;
 	int Mlen;
-	int i = 1;
+	int loop = 1;
 
 	if (argc > 1)
-		i = atoi(argv[1]);
+		loop = atoi(argv[1]);
 
 	sm2_make_prikey(pri);
 	sm2_make_pubkey(pri, &pub);
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	else
 		printHex("M", M, Mlen);
 
-	while (i--) {
+	while (loop--) {
 		speed_test("aa", 2);
 		ret = sm2_verify(&pub, hash, r, s);
 	}

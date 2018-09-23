@@ -31,8 +31,11 @@ int vli_cmp(u64 *left, u64 *right, u8 ndigits);
  */
 u64 vli_lshift(u64 *result, u64 *in, u32 shift, u8 ndigits);
 
-/* Computes vli = vli >> 1. */
-//void vli_rshift1(u64 *vli, u8 ndigits);
+/* Computes result = (left * right) % curve->p. */
+void vli_mod_mult_fast(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits);
+
+/* Computes result = left^2 % curve->p. */
+void vli_mod_square_fast(u64 *result, u64 *left, u64 *mod, u8 ndigits);
 
 /* Computes result = in >> c, returning carry. Can modify in place
  * (if result == in). 0 < shift < 64.
@@ -59,12 +62,6 @@ void vli_mod_add(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits);
    Assumes that left < mod and right < mod, result != mod. */
 void vli_mod_sub(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits);
 
-/* Computes result = (left * right) % ecc_curve.p. */
-void vli_mod_mult_fast(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits);
-
-/* Computes result = left^2 % ecc_curve.p. */
-void vli_mod_square_fast(u64 *result, u64 *left, u64 *mod, u8 ndigits);
-
 /* Computes result = (left * right) % mod. */
 void vli_mod_mult(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits);
 
@@ -82,5 +79,10 @@ void vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits);
  * https://labs.oracle.com/techrep/2001/smli_tr-2001-95.pdf
  */
 void vli_mod_inv(u64 *result, u64 *input, u64 *mod, u8 ndigits);
+
+/* Computes result = (left / right).
+ * remainder = (left % right).
+ */
+void vli_div(u64 *result, u64 *remainder, u64 *left, u64 cdigits, u64 *right, u8 ddigits);
 
 #endif

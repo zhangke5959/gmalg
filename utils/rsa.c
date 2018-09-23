@@ -3,7 +3,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#include "zkrsa.h"
+#include "rsa.h"
 #include "debug.h"
 
 #define KEY_M_BITS      2048
@@ -98,21 +98,28 @@ u8 key_c[] = {
 	0x30, 0x28, 0x93, 0x6e, 0x68, 0x14, 0x1a, 0xc0, 0x17, 0x6c, 0xe1, 0x7c, 0x39, 0x19, 0xe6, 0xd8};
 
 
-//int main(int argc, char const *argv[])
+struct rsa_pk_t pk = {0};
+struct rsa_sk_t sk = {0};
 
-int RSA2048(void)
+u8 output[256];
+u32 outputLen;
+
+u8 input [256] = { 0x21,0x55,0x53,0x53,0x53,0x53};
+u32 inputLen;
+
+u8 msg [256];
+u32 msg_len;
+
+int main(int argc, char const *argv[])
 {
-	rsa_pk_t pk = {0};
-	rsa_sk_t sk = {0};
-	u8 output[256];
-	u8 input [256] = { 0x21,0x55,0x53,0x53,0x53,0x53};
-
-	unsigned char msg [256];
-	u32 outputLen, msg_len;
-	u8  inputLen;
+	int loop = 1;
 	int ret;
 
-	// copy keys.h message about public key and private key to the flash RAM
+	if (argc > 1)
+		loop = atoi(argv[1]);
+
+	rsa_make_keypair(&sk, &pk);
+
 	pk.bits = cpu_to_be32(KEY_M_BITS);
 	memcpy(&pk.modulus         [RSA_MAX_MODULUS_LEN-sizeof(key_m) ],  key_m,  sizeof(key_m ));
 	memcpy(&pk.exponent        [RSA_MAX_MODULUS_LEN-sizeof(key_e) ],  key_e,  sizeof(key_e ));
@@ -128,50 +135,34 @@ int RSA2048(void)
 
 	inputLen = strlen((const char*)input);
 
-	// public key encrypt
 	ret = rsa_encrypt(output, &outputLen, input, inputLen, &pk);
 	if (ret) {
 		printf(" rsa_public_encrypt err \n");
 		return -1;
 	}
-//	printHex("aa", output, outputLen);
 
-	// private key decrypt
 	ret = rsa_decrypt(msg, &msg_len, output, outputLen, &sk);
 	if (ret) {
 		printf(" rsa_public_encrypt err \n");
 		return -1;
 	}
 
-	// private key encrypt
 	ret = rsa_sign(output, &outputLen, input, inputLen, &sk);
 	if (ret) {
 		printf(" rsa_public_encrypt err \n");
 		return -1;
 	}
 
-	// public key decrypted
-	ret = rsa_verify(msg, &msg_len, output, outputLen, &pk);
-	if (ret) {
-		printf(" rsa_public_encrypt err \n");
-		return -1;
+	while (loop--) {
+		speed_test("aa", 2);
+		ret = rsa_verify(msg, &msg_len, output, outputLen, &pk);
+		if (ret) {
+			printf(" rsa_public_encrypt err \n");
+			return -1;
+		}
 	}
 
-//	printf(" rsa test ok \n");
+	printf(" rsa test ok \n");
 
 	return 0;
-}
-
-int main(int argc, char const *argv[])
-{
-    clock_t start, finish;
-    double  duration;
-    int i;
-    start = clock();    // init start time
-    for(i=0;i<5;i++)
-    RSA2048();
-    finish = clock();   // print end time
-    duration = (double)(finish - start) / CLOCKS_PER_SEC;   // print encrypt and decrypt time
-    printf( "%f seconds\n", duration/5);
-    return 0;
 }
