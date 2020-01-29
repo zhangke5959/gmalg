@@ -196,7 +196,10 @@ static void sha256_transform(u32 *state, const u8 *input)
 
 	/* clear any sensitive info... */
 	a = b = c = d = e = f = g = h = t1 = t2 = 0;
+	
+	/*
 //	memzero_explicit(W, 64 * sizeof(u32));
+	*/
 }
 
 static inline void block_fn(struct sha256_ctx *sst,

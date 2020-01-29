@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include "typedef.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MD5_DIGEST_SIZE   16
 #define MD5_BLOCK_WORDS   16
 
@@ -21,5 +25,9 @@ struct md5_ctx {
 int md5_init(struct md5_ctx *ctx);
 int md5_update(struct md5_ctx *ctx, const u8 *data, u32 len);
 int md5_final(struct md5_ctx *ctx, u8 *digest);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

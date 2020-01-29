@@ -1,9 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdint.h>
 
 #include "debug.h"
 #include "sm3.h"
@@ -65,10 +62,12 @@ static void sm3_process(struct sm3_ctx *ctx, u8 data[64])
 	int i;
 #endif
 
+/*
 	//for(j=0; j < 68; j++)
 	//	W[j] = 0;
 	//for(j=0; j < 64; j++)
 	//	W1[j] = 0;
+*/
 
 	for(j = 0; j < 16; j++)
 		T[j] = 0x79CC4519;
@@ -111,17 +110,21 @@ static void sm3_process(struct sm3_ctx *ctx, u8 data[64])
 
 #define SHL(x,n) (((x) & 0xFFFFFFFF) << n)
 #define ROTL(x,n) (SHL((x),n) | ((x) >> (32 - n)))
-//#define ROTL(x,n) (SHL((x),n) | ((x) >> (32 - n%32)))
+/*
+#define ROTL(x,n) (SHL((x),n) | ((x) >> (32 - n%32)))
+*/
 
 #define P0(x) ((x) ^  ROTL((x),9) ^ ROTL((x),17))
 #define P1(x) ((x) ^  ROTL((x),15) ^ ROTL((x),23))
 
 	for(j = 16; j < 68; j++ )
 	{
+		/*
 		//W[j] = P1( W[j-16] ^ W[j-9] ^ ROTL(W[j-3],15)) ^ ROTL(W[j - 13],7 ) ^ W[j-6];
 		//Why thd release's result is different with the debug's ?
 		//Below is okay. Interesting, Perhaps VC6 has a bug of Optimizaiton.
-
+		*/
+		
 		Temp1 = W[j-16] ^ W[j-9];
 		Temp2 = ROTL(W[j-3],15);
 		Temp3 = Temp1 ^ Temp2;
@@ -324,4 +327,77 @@ int sm3_finup(struct sm3_ctx *ctx, const u8 *data,
 	sm3_init(ctx);
 	sm3_update(ctx, data, len);
 	return sm3_final(ctx, out);
+}
+
+
+/*
+ * SM3 HMAC context setup
+ */
+void sm3_hmac_starts(struct sm3_ctx *ctx, unsigned char *key, int keylen )
+{
+    int i;
+    unsigned char sum[32];
+	
+    struct sm3_ctx ctxTemp;
+	
+    if( keylen > 64 )
+    {
+        sm3_finup(&ctxTemp, key, keylen, sum );
+		
+        keylen = 32;
+        /*keylen = ( is224 ) ? 28 : 32;*/
+        key = sum;
+    }
+
+    memset( ctx->ipad, 0x36, 64 );
+    memset( ctx->opad, 0x5C, 64 );
+
+    for( i = 0; i < keylen; i++ )
+    {
+        ctx->ipad[i] = (unsigned char)( ctx->ipad[i] ^ key[i] );
+        ctx->opad[i] = (unsigned char)( ctx->opad[i] ^ key[i] );
+    }
+
+    sm3_init( ctx);
+    sm3_update( ctx, ctx->ipad, 64 );
+}
+
+/*
+ * SM3 HMAC process buffer
+ */
+void sm3_hmac_update(struct sm3_ctx *ctx, unsigned char *input, int ilen )
+{
+    sm3_update( ctx, input, ilen );
+}
+
+/*
+ * SM3 HMAC final digest
+ */
+void sm3_hmac_finish(struct sm3_ctx *ctx, unsigned char output[32] )
+{
+    int hlen;
+    unsigned char tmpbuf[32];
+
+    /*is224 = ctx->is224;*/
+    hlen =  32;
+
+    sm3_final( ctx, tmpbuf );
+    sm3_init( ctx );
+    sm3_update( ctx, ctx->opad, 64 );
+    sm3_update( ctx, tmpbuf, hlen );
+    sm3_final( ctx, output );
+}
+
+/*
+ * output = HMAC-SM#( hmac key, input buffer )
+ */
+void sm3_hmac( unsigned char *key, int keylen,
+               unsigned char *input, int ilen,
+               unsigned char output[32] )
+{
+    struct sm3_ctx ctx;
+
+    sm3_hmac_starts( &ctx, key, keylen);
+    sm3_hmac_update( &ctx, input, ilen );
+    sm3_hmac_finish( &ctx, output );
 }

@@ -6,6 +6,10 @@
 #define VLI_DIGIT_BITS               64
 #define VLI_DIGIT_BYTES              (VLI_DIGIT_BITS/8)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void vli_clear(u64 *vli, u8 ndigits);
 
 /* Returns true if vli == 0, false otherwise. */
@@ -84,5 +88,10 @@ void vli_mod_inv(u64 *result, u64 *input, u64 *mod, u8 ndigits);
  * remainder = (left % right).
  */
 void vli_div(u64 *result, u64 *remainder, u64 *left, u64 cdigits, u64 *right, u8 ddigits);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

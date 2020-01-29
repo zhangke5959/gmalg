@@ -20,7 +20,7 @@ const u8 md5_zero_message_hash[MD5_DIGEST_SIZE] = {
 static inline void le32_to_cpu_array(u32 *buf, unsigned int words)
 {
 	while (words--) {
-		le32_to_cpu(buf);
+		le32_to_cpu(buf[0]);
 		buf++;
 	}
 }
@@ -28,7 +28,7 @@ static inline void le32_to_cpu_array(u32 *buf, unsigned int words)
 static inline void cpu_to_le32_array(u32 *buf, unsigned int words)
 {
 	while (words--) {
-		cpu_to_le32(buf);
+		cpu_to_le32(buf[0]);
 		buf++;
 	}
 }

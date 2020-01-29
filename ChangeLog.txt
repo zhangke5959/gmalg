@@ -1,0 +1,10 @@
+Author:yingge
+Data:2020-01-29
+1.全面兼容支持 C89/C99 编译项，增加inet.c/inet.h 方便嵌入式keil + ARM编译
+2.增加SM3 HMAC接口。
+3.增加 sm2 encrypt/decrypt C1||C2||C3 To C1||C3||C2接口．
+4.不依赖文件系统的纯软件随机数产生方法。
+5.Modify README.md.
+6.Fixed SM2 和 SM4 Bugs.
+7.API输入长度u8改为u32.
+8.头文件支持C++ 调用.

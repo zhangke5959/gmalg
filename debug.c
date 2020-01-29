@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include<time.h>
+#include <time.h>
 
 void printHex(unsigned char *name, unsigned char *c, int n)
 {

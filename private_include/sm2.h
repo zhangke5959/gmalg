@@ -4,6 +4,10 @@
 #include "typedef.h"
 #include "ecc.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int sm2_make_prikey(u8 *prikey);
 int sm2_make_pubkey(u8 *prikey, ecc_point *pubkey);
 int sm2_make_keypair(u8 *prikey, ecc_point *pubkey);
@@ -19,6 +23,7 @@ int sm2_shared_point(u8* selfPriKey,  u8* selfTempPriKey, ecc_point* selfTempPub
 int sm2_shared_key(ecc_point *point, u8 *ZA, u8 *ZB, u32 keyLen, u8 *key);
 int sm2_point_mult(ecc_point *G, u8 *k, ecc_point *P);
 
+int sm2_C1C2C3ConvertToC1C3C2(u8 *pOut, u8 *pIn, s32 len, s32 mode);
 
 int ECC_KeyEx_Init_I(u8 *pri, ecc_point *pub);
 
@@ -30,5 +35,9 @@ int ECC_KeyEx_Init_II(u8* ra, u8* dA, ecc_point* RA, ecc_point* RB, ecc_point* P
 		ZA[],u8 ZB[],u8 SB[],u8 K[], u32 klen,u8 SA[]);
 
 int ECC_KeyEx_Re_II(ecc_point *V,ecc_point *RA,ecc_point *RB,u8 ZA[],u8 ZB[],u8 SA[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _SM2_H_ */

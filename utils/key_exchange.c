@@ -52,25 +52,25 @@ int main(int argc, char **argv)
 	sm3_z(IDa, 16, &pubkeyA, ZA);
 	sm3_z(IDb, 16, &pubkeyB, ZB);
 
-	//a
+	/*a*/
 	rc = ECC_KeyEx_Init_I(rA, &RA);
 	if (rc)
 		printf(" key ex err\n");
 	else
 		printf(" key ex ok\n");
-	///b
+	/*b*/
 	rc = ECC_KeyEx_Re_I(rB, prikeyB, &RA, &pubkeyA, ZA, ZB, K, klen, &RB, &V, SB);
 	if (rc)
 		printf(" key ex err\n");
 	else
 		printf(" key ex ok\n");
-	//a
+	/*a*/
 	rc = ECC_KeyEx_Init_II(rA, prikeyA, &RA, &RB, &pubkeyB, ZA, ZB, SB, K, klen, SA);
 	if (rc)
 		printf(" key ex err\n");
 	else
 		printf(" key ex ok\n");
-	//bb
+	/*bb*/
 	rc = ECC_KeyEx_Re_II(&V, &RA, &RB, ZA, ZB, SA);
 	if (rc)
 		printf(" key ex err\n");
