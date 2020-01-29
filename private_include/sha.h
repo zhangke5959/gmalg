@@ -8,6 +8,10 @@
 
 #include "typedef.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SHA1_DIGEST_SIZE        20
 #define SHA1_BLOCK_SIZE         64
 
@@ -96,5 +100,9 @@ int sha384_init(struct sha512_ctx *ctx);
 int sha512_init(struct sha512_ctx *ctx);
 int sha512_update(struct sha512_ctx *ctx, const u8 *data, u32 len);
 int sha512_final(struct sha512_ctx *ctx, u8 *digest);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

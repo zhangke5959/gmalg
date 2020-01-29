@@ -217,7 +217,7 @@ int ecdsa_verify(ecc_point *pubkey, u8 *hash_, u8 *r_, u8 *s_)
 		return -1;
 	}
 
-	vli_mod_add(t, r, s, ecdsa_curve.n, ECC_NUMWORD); // r + s
+	vli_mod_add(t, r, s, ecdsa_curve.n, ECC_NUMWORD); /* r + s */
 	if (t == 0)
 		return -1;
 

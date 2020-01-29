@@ -1,8 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "debug.h"
 #include "sm4.h"
@@ -223,7 +221,7 @@ int sm4_set_key(struct sm4_ctx *ctx, u8 *key, u32 len)
 	return 0;
 }
 
-void sm4_ecb_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u8 len, u8 *out)
+void sm4_ecb_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u32 len, u8 *out)
 {
 #if DEBUG
 	printf(" function: %s ,  line= %d \n", __FUNCTION__, __LINE__);
@@ -238,12 +236,14 @@ void sm4_ecb_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u8 len, u8 *out)
 	}
 }
 
-void sm4_ecb_decrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u8 len, u8 *out)
+void sm4_ecb_decrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u32 len, u8 *out)
 {
-
 #if DEBUG
 	printf(" function: %s ,  line= %d \n", __FUNCTION__, __LINE__);
 #endif
+
+	sm4_set_key(ctx, key, 16);
+
 	while( len > 0 ) {
 		sm4_one_round( ctx->sk_dec, in, out);
 		in  += 16;
@@ -252,13 +252,14 @@ void sm4_ecb_decrypt(struct sm4_ctx *ctx, u8 *key, u8 *in, u8 len, u8 *out)
 	}
 }
 
-void sm4_cbc_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *iv, u8 *in, u8 len, u8 *out)
+void sm4_cbc_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *iv, u8 *in, u32 len, u8 *out)
 {
+	u8 temp[16];
+	int i;
+
 #if DEBUG
 	printf(" function: %s ,  line= %d \n", __FUNCTION__, __LINE__);
 #endif
-	u8 temp[16];
-	int i;
 
 	sm4_set_key(ctx, key, 16);
 	memcpy(temp, iv, 16 );
@@ -274,22 +275,28 @@ void sm4_cbc_encrypt(struct sm4_ctx *ctx, u8 *key, u8 *iv, u8 *in, u8 len, u8 *o
 	}
 }
 
-void sm4_cbc_decrypt(struct sm4_ctx *ctx, u8 *key, u8 *iv, u8 *in, u8 len, u8 *out)
+void sm4_cbc_decrypt(struct sm4_ctx *ctx, u8 *key, u8 *iv, u8 *in, u32 len, u8 *out)
 {
+	u8 temp[16];
+	u8 dataIV[16];
+	int i;
+
 #if DEBUG
 	printf(" function: %s ,  line= %d \n", __FUNCTION__, __LINE__);
 #endif
-	u8 temp[16];
-	int i;
 
 	sm4_set_key(ctx, key, 16);
 	memcpy(temp, iv, 16 );
 	while(len > 0)
 	{
+		memcpy(dataIV,in,16);
+		
 		sm4_one_round(ctx->sk_dec, in, out);
 		for(i = 0; i < 16; i++)
 			out[i] = (u8)(out[i] ^ temp[i] );
-		memcpy(temp, in, 16);
+		
+		memcpy(temp, dataIV, 16);
+		
 		in  += 16;
 		out += 16;
 		len -= 16;

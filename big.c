@@ -1,8 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "debug.h"
 #include "big.h"
@@ -229,8 +227,16 @@ static u64 vli_add_digit_mul(u64 *result, u64 *b, u64 c, u64 *d, u8 digits)
 
 void bn_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
 {
-	u64 t[2*ndigits];
 	u32 bdigits, cdigits, i;
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *t = (u64*) malloc(2 * ndigits * sizeof(u64));
+	if(t == NULL)
+	{
+		return;
+	}
+#else
+	u64 t[2*ndigits];
+#endif
 
 	vli_clear(t, 2*ndigits);
 
@@ -242,6 +248,10 @@ void bn_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
 	}
 
 	vli_set(result, t, 2*ndigits);
+	
+#ifdef PREDEF_STANDARD_C_1989
+	free(t);
+#endif
 }
 
 #define BN_DIGIT_BITS    32
@@ -288,11 +298,31 @@ static u32 bn_digit_bits(u32 a)
 
 void bn_div(u32 *a, u32 *b, u32 *c, u32 cdigits, u32 *d, u32 ddigits)
 {
-	u32 ai, t, cc[cdigits+1], dd[cdigits/2];
+
 	u32 dddigits, shift;
 	u64 tmp;
 	int i;
+	
+#ifdef PREDEF_STANDARD_C_1989
+	u32 ai, t;
+	
+	u32 *cc;
+	u32 *dd;
 
+	cc = (u32*) malloc((cdigits+1) * sizeof(u32));
+	if(cc == NULL)
+		return;
+	
+	dd = (u32*) malloc((cdigits/2) * sizeof(u32));
+	if(dd == NULL)
+	{
+		free(cc);
+		return;
+	}
+#else
+	u32 ai, t, cc[cdigits+1], dd[cdigits/2];
+#endif
+	
 	dddigits = ddigits;
 
 	shift = BN_DIGIT_BITS - bn_digit_bits(d[dddigits-1]);
@@ -321,6 +351,11 @@ void bn_div(u32 *a, u32 *b, u32 *c, u32 cdigits, u32 *d, u32 ddigits)
 	}
 
 	vli_rshift((u64*)b, (u64*)cc, shift, dddigits/2);
+
+#ifdef PREDEF_STANDARD_C_1989
+	free(cc);
+	free(dd);
+#endif
 }
 
 void vli_div(u64 *result, u64 *remainder, u64 *left, u64 cdigits, u64 *right, u8 ddigits)
@@ -330,9 +365,19 @@ void vli_div(u64 *result, u64 *remainder, u64 *left, u64 cdigits, u64 *right, u8
 
 void bn_mod(u64 *result, u64 *left, u64 *right, u8 ndigits)
 {
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *t = (u64*) malloc(2 * ndigits * sizeof(u64));
+	if(t == NULL)
+		return;
+#else
 	u64 t[2*ndigits];
+#endif
 
 	vli_div(t, result, left, ndigits*2, right, ndigits);
+
+#ifdef PREDEF_STANDARD_C_1989
+	free(t);	
+#endif
 }
 
 void _vli_mult(u64 *result, u64 *left, u64 *right, u8 ndigits)
@@ -456,8 +501,15 @@ void vli_mod_sub(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
  */
 void vli_mmod_fast_nist_256(u64 *result, u64 *product, u64 *curve_prime, u8 ndigits)
 {
-	u64 tmp[2 * ndigits];
 	int carry;
+	
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *tmp = (u64*) malloc(2 * ndigits * sizeof(u64));
+	if(tmp == NULL)
+		return;
+#else
+	u64 tmp[2 * ndigits];
+#endif
 
 	/* t */
 	vli_set(result, product, ndigits);
@@ -528,6 +580,10 @@ void vli_mmod_fast_nist_256(u64 *result, u64 *product, u64 *curve_prime, u8 ndig
 			carry -= vli_sub(result, result, curve_prime, ndigits);
 		}
 	}
+	
+#ifdef PREDEF_STANDARD_C_1989
+	free(tmp);
+#endif
 }
 
 void vli_mmod_fast_sm2_256(u64 *result, u64 *_product, u64 *mod, u8 ndigits)
@@ -615,11 +671,20 @@ void vli_mmod_fast_sm2_256(u64 *result, u64 *_product, u64 *mod, u8 ndigits)
 /* Computes result = (product) % mod. */
 void _vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 {
-	u64 modMultiple[2 * ndigits];
 	uint digitShift, bitShift;
 	uint productBits;
 	uint modBits = vli_num_bits(mod, ndigits);
-
+	
+	u64 carry;
+	
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *modMultiple = (u64*) malloc(2 * ndigits * sizeof(u64));
+	if(modMultiple == NULL)
+		return;
+#else
+	u64 modMultiple[2 * ndigits];
+#endif
+		
 	productBits = vli_num_bits(product + ndigits, ndigits);
 	if (productBits) {
 		productBits += ndigits * 64;
@@ -659,7 +724,8 @@ void _vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 			}
 			vli_sub(product + ndigits, product + ndigits, modMultiple + ndigits, ndigits);
 		}
-		u64 carry = (modMultiple[ndigits] & 0x01) << 63;
+		
+		carry = (modMultiple[ndigits] & 0x01) << 63;
 		vli_rshift(modMultiple + ndigits, modMultiple + ndigits, 1, ndigits);
 		vli_rshift(modMultiple, modMultiple, 1, ndigits);
 		modMultiple[ndigits-1] |= carry;
@@ -667,6 +733,11 @@ void _vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 		--productBits;
 	}
 	vli_set(result, product, ndigits);
+	
+#ifdef PREDEF_STANDARD_C_1989
+	free(modMultiple);
+#endif
+
 }
 
 /* Computes result = (product) % mod. */
@@ -682,7 +753,11 @@ void vli_mod(u64 *result, u64 *product, u64 *mod, u8 ndigits)
 /* Computes result = (left * right) % curve->p. */
 void vli_mod_mult_fast(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 {
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *product = (u64*) malloc(2 * ndigits * sizeof(u64));
+#else
 	u64 product[2 * ndigits];
+#endif
 
 	vli_mult(product, left, right, ndigits);
 #if 1
@@ -692,13 +767,21 @@ void vli_mod_mult_fast(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 		vli_mmod_fast_sm2_256(result, product, mod, ndigits);
 	else
 		vli_mmod_fast_nist_256(result, product, mod, ndigits);
+#endif
+
+#ifdef PREDEF_STANDARD_C_1989
+	free(product);
 #endif
 }
 
 /* Computes result = left^2 % curve->p. */
 void vli_mod_square_fast(u64 *result, u64 *left, u64 *mod, u8 ndigits)
 {
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *product	= (u64*) malloc(2 * ndigits * sizeof(u64));
+#else
 	u64 product[2 * ndigits];
+#endif
 
 	vli_square(product, left, ndigits);
 #if 1
@@ -710,67 +793,106 @@ void vli_mod_square_fast(u64 *result, u64 *left, u64 *mod, u8 ndigits)
 	else
 		vli_mmod_fast_nist_256(result, product, mod, ndigits);
 #endif
+
+#ifdef PREDEF_STANDARD_C_1989
+	free(product);
+#endif
 }
 
 /* Computes result = (left * right) % mod. */
 void vli_mod_mult(u64 *result, u64 *left, u64 *right, u64 *mod, u8 ndigits)
 {
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *product	= (u64*) malloc(2 * ndigits * sizeof(u64));
+#else
 	u64 product[2 * ndigits];
-
+#endif
+	
 	vli_mult(product, left, right, ndigits);
 	vli_mod(result, product, mod, ndigits);
+	
+#ifdef PREDEF_STANDARD_C_1989
+	free(product);	
+#endif
 }
 
 /* Computes result = left^2 % mod. */
 void vli_mod_square(u64 *result, u64 *left, u64 *mod, u8 ndigits)
 {
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *product	= (u64*) malloc(2 * ndigits * sizeof(u64));
+#else
 	u64 product[2 * ndigits];
+#endif
 
 	vli_square(product, left, ndigits);
 	vli_mod(result, product, mod, ndigits);
+	
+#ifdef PREDEF_STANDARD_C_1989
+	free(product);	
+#endif
 }
 
 #define DIGIT_2MSB(x)  (u64)(((x) >> (VLI_DIGIT_BITS - 2)) & 0x03)
 /* Computes result = left^p % mod. */
 void vli_mod_exp(u64 *result, u64 *left, u64 *p, u64 *mod, u8 ndigits)
 {
-	u64 bpower[3][ndigits], t[ndigits];
-	u64 ci_bits, ci;
-	u32 j, s;
-	u32 digits;
-	int i;
+    u64 ci_bits, ci;
+    u32 j, s;
+    u32 digits;
+    int i;
 
-	vli_set(bpower[0], left, ndigits);
-	vli_mod_mult(bpower[1], bpower[0], left, mod, ndigits);
-	vli_mod_mult(bpower[2], bpower[1], left, mod, ndigits);
-	vli_clear(t, ndigits);
-	t[0] = 1;
+#ifdef PREDEF_STANDARD_C_1989
+    u64 *bpower[3]= {NULL, NULL, NULL};
+    u64 *t = calloc(1, ndigits * VLI_DIGIT_BYTES);
+    
+    bpower[0] = calloc(1, ndigits* VLI_DIGIT_BYTES);
+    bpower[1] = calloc(1, ndigits* VLI_DIGIT_BYTES);
+    bpower[2] = calloc(1, ndigits* VLI_DIGIT_BYTES);
+#else
+    u64 bpower[3][ndigits], t[ndigits];
+#endif
 
-	digits = vli_num_digits(p , ndigits);
+	  
+    vli_set(bpower[0], left, ndigits);
+    vli_mod_mult(bpower[1], bpower[0], left, mod, ndigits);
+    vli_mod_mult(bpower[2], bpower[1], left, mod, ndigits);
+    vli_clear(t, ndigits);
+    t[0] = 1;
 
-	i = digits - 1;
-	for ( ; i >= 0; i--) {
-		ci = p[i];
-		ci_bits = VLI_DIGIT_BITS;
+    digits = vli_num_digits(p , ndigits);
 
-		if (i == (digits - 1)) {
-			while (!DIGIT_2MSB(ci)) {
-				ci <<= 2;
-				ci_bits -= 2;
-			}
-		}
+    i = digits - 1;
+    for ( ; i >= 0; i--) {
+        ci = p[i];
+        ci_bits = VLI_DIGIT_BITS;
 
-		for( j = 0; j < ci_bits; j += 2) {
-			vli_mod_mult(t, t, t, mod, ndigits);
-			vli_mod_mult(t, t, t, mod, ndigits);
-			if ((s = DIGIT_2MSB(ci)) != 0) {
-				vli_mod_mult(t, t, bpower[s-1], mod, ndigits);
-			}
-			ci <<= 2;
-		}
-	}
+        if (i == (digits - 1)) {
+            while (!DIGIT_2MSB(ci)) {
+                ci <<= 2;
+                ci_bits -= 2;
+            }
+        }
 
-	vli_set(result, t, ndigits);
+        for( j = 0; j < ci_bits; j += 2) {
+            vli_mod_mult(t, t, t, mod, ndigits);
+            vli_mod_mult(t, t, t, mod, ndigits);
+            if ((s = DIGIT_2MSB(ci)) != 0) {
+                vli_mod_mult(t, t, bpower[s-1], mod, ndigits);
+            }
+            ci <<= 2;
+        }
+    }
+
+    vli_set(result, t, ndigits);
+	
+#ifdef PREDEF_STANDARD_C_1989
+    free(bpower[0]);
+    free(bpower[1]);
+    free(bpower[2]);
+    
+    free(t);
+#endif
 }
 
 #define EVEN(vli) (!(vli[0] & 1))
@@ -780,10 +902,19 @@ void vli_mod_exp(u64 *result, u64 *left, u64 *p, u64 *mod, u8 ndigits)
  */
 void vli_mod_inv(u64 *result, u64 *input, u64 *mod, u8 ndigits)
 {
-	u64 a[ndigits], b[ndigits];
-	u64 u[ndigits], v[ndigits];
 	u64 carry;
 	int cmp_result;
+	
+#ifdef PREDEF_STANDARD_C_1989
+	u64 *a = (u64*) malloc(ndigits * sizeof(u64));
+	u64 *b = (u64*) malloc(ndigits * sizeof(u64));
+	
+	u64 *u = (u64*) malloc(ndigits * sizeof(u64));
+	u64 *v = (u64*) malloc(ndigits * sizeof(u64));
+#else
+	u64 a[ndigits], b[ndigits];
+	u64 u[ndigits], v[ndigits];
+#endif
 
 	if (vli_is_zero(input, ndigits)) {
 		vli_clear(result, ndigits);
@@ -849,4 +980,11 @@ void vli_mod_inv(u64 *result, u64 *input, u64 *mod, u8 ndigits)
 	}
 
 	vli_set(result, u, ndigits);
+
+#ifdef PREDEF_STANDARD_C_1989
+	free(a);
+	free(b);
+	free(u);
+	free(v);
+#endif
 }

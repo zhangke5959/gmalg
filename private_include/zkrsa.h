@@ -3,6 +3,10 @@
 
 #include "typedef.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define RSA_MAX_MODULUS_BITS          2048
 #define RSA_MAX_MODULUS_LEN           ((RSA_MAX_MODULUS_BITS + 7) / 8)
 #define RSA_MAX_PRIME_BITS            ((RSA_MAX_MODULUS_BITS + 1) / 2)
@@ -34,5 +38,8 @@ int rsa_decrypt(u8 *out, u32 *out_len, u8 *in, u32 in_len, rsa_sk_t *sk);
 int rsa_sign(u8 *out, u32 *out_len, u8 *in, u32 in_len, rsa_sk_t *sk);
 int rsa_verify(u8 *out, u32 *out_len, u8 *in, u32 in_len, rsa_pk_t *pk);
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif  // __RSA_H__
+#endif  /* __RSA_H__*/

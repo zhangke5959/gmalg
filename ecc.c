@@ -1,8 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "debug.h"
 #include "ecc.h"
@@ -209,7 +207,13 @@ void ecc_point_mult2(struct ecc_curve *curve, ecc_point *result, ecc_point *g, e
 	u64 *rx;
 	u64 *ry;
 	int i;
-
+	
+	/*For C89*/
+	u32 numBits;
+	ecc_point *points[4];
+	int index;
+	ecc_point *point;
+	
 	rx = result->x;
 	ry = result->y;
 
@@ -224,11 +228,17 @@ void ecc_point_mult2(struct ecc_curve *curve, ecc_point *result, ecc_point *g, e
 	vli_mod_inv(z, z, curve->p, curve->ndigits); /* Z = 1/Z */
 	apply_z(curve, sum.x, sum.y, z);
 
-	/* Use Shamir's trick to calculate u1*G + u2*Q */
-	ecc_point *points[4] = {NULL, g, p, &sum};
-	u32 numBits = max(vli_num_bits(s, curve->ndigits), vli_num_bits(t, curve->ndigits));
+	/*For C89*/
+	points[0] = NULL;
+	points[1] = g;
+	points[2] = p;
+	points[3] = &sum;
 
-	ecc_point *point = points[(!!vli_test_bit(s, numBits-1, curve->ndigits))
+	/* Use Shamir's trick to calculate u1*G + u2*Q */
+
+	numBits = max(vli_num_bits(s, curve->ndigits), vli_num_bits(t, curve->ndigits));
+
+	point = points[(!!vli_test_bit(s, numBits-1, curve->ndigits))
 				| ((!!vli_test_bit(t, numBits-1, curve->ndigits)) << 1)];
 	vli_set(rx, point->x, curve->ndigits);
 	vli_set(ry, point->y, curve->ndigits);
@@ -238,8 +248,8 @@ void ecc_point_mult2(struct ecc_curve *curve, ecc_point *result, ecc_point *g, e
 	for (i = numBits - 2; i >= 0; --i) {
 		ecc_point_double_jacobian(curve, rx, ry, z);
 
-		int index = (!!vli_test_bit(s, i, curve->ndigits)) | ((!!vli_test_bit(t, i, curve->ndigits)) << 1);
-		ecc_point *point = points[index];
+		index = (!!vli_test_bit(s, i, curve->ndigits)) | ((!!vli_test_bit(t, i, curve->ndigits)) << 1);
+		point = points[index];
 		if(point) {
 			vli_set(tx, point->x, curve->ndigits);
 			vli_set(ty, point->y, curve->ndigits);

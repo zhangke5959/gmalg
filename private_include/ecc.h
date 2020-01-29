@@ -3,9 +3,14 @@
 
 #include "typedef.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ECC_WORDSIZE 8
 #define ECC_NUMBITS 256
-#define ECC_NUMWORD (ECC_NUMBITS/ECC_WORDSIZE) //32
+#define ECC_NUMWORD (ECC_NUMBITS/ECC_WORDSIZE) /*32*/
 
 #define ECC_MAX_DIGITS  4
 
@@ -60,5 +65,10 @@ void ecc_point_add(struct ecc_curve *curve, ecc_point *result, ecc_point *x, ecc
 void ecc_point_mult(struct ecc_curve *curve, ecc_point *result, ecc_point *point, u64 *scalar, u64 *initialZ);
 void ecc_point_mult2(struct ecc_curve *curve, ecc_point *result, ecc_point *g, ecc_point *p, u64 *s, u64 *t);
 int ecc_point_is_zero(struct ecc_curve *curve, ecc_point *point);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

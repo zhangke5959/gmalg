@@ -7,9 +7,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdint.h>
 
 #include "debug.h"
 #include "random.h"

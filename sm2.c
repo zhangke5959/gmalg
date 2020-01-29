@@ -1,8 +1,6 @@
-#include <string.h>
+﻿#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "debug.h"
 #include "random.h"
@@ -10,6 +8,46 @@
 #include "ecc.h"
 #include "sm2.h"
 #include "sm3.h"
+
+
+/*For C89*/
+#ifdef PREDEF_STANDARD_C_1989
+
+struct ecc_curve sm2_curve = {
+	ECC_MAX_DIGITS,
+	{
+		 {
+			0x715A4589334C74C7ull, 0x8FE30BBFF2660BE1ull,
+			0x5F9904466A39C994ull, 0x32C4AE2C1F198119ull
+		},
+		{
+			0x02DF32E52139F0A0ull, 0xD0A9877CC62A4740ull,
+			0x59BDCEE36B692153ull, 0xBC3736A2F4F6779Cull
+		},
+	},
+	{
+		0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFF00000000ull,
+		0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFEFFFFFFFFull
+	},
+	{
+		0x53BBF40939D54123ull, 0x7203DF6B21C6052Bull,
+		0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFEFFFFFFFFull
+	},
+	{
+		0x0000000000000001ull, 0x0000000000000000ull,
+		0x0000000000000000ull, 0x0000000000000000ull,
+	},
+	{
+		0xFFFFFFFFFFFFFFFCull, 0xFFFFFFFF00000000ull,
+		0xFFFFFFFFFFFFFFFFull, 0xFFFFFFFEFFFFFFFFull
+	},
+	{
+		0xDDBCBD414D940E93ull, 0xF39789F515AB8F92ull,
+		0x4D5A9E4BCF6509A7ull, 0x28E9FA9E9D9F5E34ull
+	},
+};
+
+#else
 
 struct ecc_curve sm2_curve = {
 	.ndigits = ECC_MAX_DIGITS,
@@ -45,6 +83,8 @@ struct ecc_curve sm2_curve = {
 	},
 };
 
+#endif
+
 /*x¯2 = 2w + (x2&(2w − 1))*/
 void sm2_w(u64 *result, u64 *x)
 {
@@ -64,9 +104,17 @@ void sm3_kdf(u8 *Z ,u32 zlen, u8 *K, u32 klen)
 	struct sm3_ctx md[1];
 
 	t = klen/ECC_NUMWORD;
+	
+	/*
 	//s4: K=Ha1||Ha2||...
+	*/
+	
 	for (i = 0; i < t; i++) {
+		
+		/*
 		//s2: Hai=Hv(Z||ct)
+		*/
+		
 		sm3_init(md);
 		sm3_update(md, Z, zlen);
 		put_unaligned_be32(ct, ct_char);
@@ -76,7 +124,7 @@ void sm3_kdf(u8 *Z ,u32 zlen, u8 *K, u32 klen)
 		ct++;
 	}
 
-	t = klen%ECC_NUMBITS;
+	t = klen%ECC_NUMWORD;
 	if (t) {
 		sm3_init(md);
 		sm3_update(md, Z, zlen);
@@ -293,7 +341,7 @@ int sm2_verify(ecc_point *pubkey, u8 *hash_, u8 *r_, u8 *s_)
 		return -1;
 	}
 
-	vli_mod_add(t, r, s, sm2_curve.n, sm2_curve.ndigits); // r + s
+	vli_mod_add(t, r, s, sm2_curve.n, sm2_curve.ndigits); /* r + s */
 	if (t == 0)
 		return -1;
 
@@ -310,10 +358,11 @@ int sm2_verify(ecc_point *pubkey, u8 *hash_, u8 *r_, u8 *s_)
 	return vli_cmp(result.x, r, sm2_curve.ndigits);
 }
 
+
+/*Output C1|C2|C3*/
 int sm2_encrypt(ecc_point *pubKey, u8 *M, u32 Mlen, u8 *C, u32 *Clen)
 {
 	u64 k[ECC_MAX_DIGITS];
-	u8 t[SM3_DATA_LEN];
 	ecc_point pub[1];
 	ecc_point *C1 = (ecc_point *)C;
 	u8 *C2 = C + ECC_NUMWORD*2;
@@ -325,6 +374,7 @@ int sm2_encrypt(ecc_point *pubKey, u8 *M, u32 Mlen, u8 *C, u32 *Clen)
 	u8 *x2y2 = (u8*)kP.x;
 	struct sm3_ctx md[1];
 	int i=0;
+	ecc_point S;
 
 	ecc_bytes2native(pub->x, pubKey->x, sm2_curve.ndigits);
 	ecc_bytes2native(pub->y, pubKey->y, sm2_curve.ndigits);
@@ -337,7 +387,7 @@ int sm2_encrypt(ecc_point *pubKey, u8 *M, u32 Mlen, u8 *C, u32 *Clen)
 	ecc_native2bytes(C1->y, C1->y, sm2_curve.ndigits);
 
 	/* S = h * Pb */
-	ecc_point S;
+
 	ecc_point_mult(&sm2_curve, &S, pub, sm2_curve.h, NULL);
 	if (sm2_valid_public_key(&S) != 0)
 		return -1;
@@ -352,11 +402,11 @@ int sm2_encrypt(ecc_point *pubKey, u8 *M, u32 Mlen, u8 *C, u32 *Clen)
 	ecc_native2bytes(kP.y, kP.y, sm2_curve.ndigits);
 
 	/* t=KDF(x2 ∥ y2, klen) */
-	sm3_kdf(x2y2, ECC_NUMWORD*2, t, Mlen);
+	sm3_kdf(x2y2, ECC_NUMWORD*2, C2, Mlen);
 
 	/* C2 = M ⊕ t；*/
 	for (i = 0; i < Mlen; i++) {
-		C2[i] = M[i]^t[+i];
+		C2[i] = M[i]^C2[+i];
 	}
 
 	/*C3 = Hash(x2 ∥ M ∥ y2)*/
@@ -372,6 +422,7 @@ int sm2_encrypt(ecc_point *pubKey, u8 *M, u32 Mlen, u8 *C, u32 *Clen)
 	return 0;
 }
 
+/*Input C1|C2|C3*/
 int sm2_decrypt(u8 *prikey, u8 *C, u32 Clen, u8 *M, u32 *Mlen)
 {
 	u8 hash[SM3_DATA_LEN];
@@ -386,6 +437,7 @@ int sm2_decrypt(u8 *prikey, u8 *C, u32 Clen, u8 *M, u32 *Mlen)
 	struct sm3_ctx md[1];
 	int outlen = Clen - ECC_NUMWORD*2 - SM3_DATA_LEN;
 	int i=0;
+	ecc_point S;
 
 	ecc_bytes2native(pri, prikey, sm2_curve.ndigits);
 	ecc_bytes2native(C1->x, C1->x, sm2_curve.ndigits);
@@ -394,7 +446,7 @@ int sm2_decrypt(u8 *prikey, u8 *C, u32 Clen, u8 *M, u32 *Mlen)
 	if (sm2_valid_public_key(C1) != 0)
 		return -1;
 
-	ecc_point S;
+
 	ecc_point_mult(&sm2_curve, &S, C1, sm2_curve.h, NULL);
 	if (sm2_valid_public_key(&S) != 0)
 		return -1;
@@ -480,6 +532,30 @@ int sm2_shared_key(ecc_point *point, u8 *ZA, u8 *ZB, u32 keyLen, u8 *key)
 	sm3_kdf(Z, ECC_NUMWORD*4, key, keyLen);
 }
 
+int sm2_C1C2C3ConvertToC1C3C2(u8 *pOut, u8 *pIn, s32 len, s32 mode)
+{
+    int dataLen = len-64-32;
+
+    if(len < 64 + 32)
+        return -1;
+
+    memcpy(pOut, pIn, 64);/*C1*/
+
+    if(!mode) /*To C1|C3|C2*/
+    {
+        memcpy( pOut + 64,pIn + 64 + dataLen, 32); /*C3*/
+        memcpy( pOut + 96,pIn + 64, dataLen); /*C2*/
+    }
+    else /*To C1|C2|C3*/
+    {
+        memcpy(pOut + 64, pIn + 96, dataLen); /*C2*/
+        memcpy(pOut + 64 + dataLen, pIn + 64, 32);  /*C3*/
+    }
+
+    return 0;
+}
+
+
 /****hash = Hash(Ux||ZA||ZB||x1||y1||x2||y2)****/
 int ECC_Key_ex_hash1(u8* x, ecc_point *RA, ecc_point* RB, u8 ZA[],u8 ZB[],u8 *hash)
 {
@@ -524,17 +600,17 @@ int ECC_KeyEx_Re_I(u8 *rb, u8 *dB, ecc_point *RA, ecc_point *PA, u8* ZA, u8 *ZB,
 	u8 hash[ECC_NUMWORD],S1[ECC_NUMWORD];
 	u8 temp=0x02;
 
-	//--------B2: RB=[rb]G=(x2,y2)--------
+	/*--------B2: RB=[rb]G=(x2,y2)--------*/
 	sm2_make_pubkey(rb, RB);
 	/********************************************/
 	sm2_shared_point(dB,  rb, RB, PA, RA, V);
-	//------------B7:KB=KDF(VX,VY,ZA,ZB,KLEN)----------
+	/*------------B7:KB=KDF(VX,VY,ZA,ZB,KLEN)----------*/
 	memcpy(Z, V->x, ECC_NUMWORD);
 	memcpy(Z+ECC_NUMWORD, (u8*)V->y, ECC_NUMWORD);
 	memcpy(Z+ECC_NUMWORD*2, ZA,ECC_NUMWORD);
 	memcpy(Z+ECC_NUMWORD*3, ZB,ECC_NUMWORD);
 	sm3_kdf(Z,ECC_NUMWORD*4, K, klen);
-	//---------------B8:(optional) SB=hash(0x02||Vy||HASH(Vx||ZA||ZB||x1||y1||x2||y2)-------------
+	/*---------------B8:(optional) SB=hash(0x02||Vy||HASH(Vx||ZA||ZB||x1||y1||x2||y2)-------------*/
 	ECC_Key_ex_hash1((u8*)V->x,  RA, RB, ZA, ZB, hash);
 	ECC_Key_ex_hash2(temp, (u8*)V->y, hash, SB);
 
